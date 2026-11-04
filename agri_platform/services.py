@@ -53,9 +53,19 @@ def generate_eda_summary(df):
         return "\n".join(f"• {item}" for item in summary)
 
 
+def _has_real_api_key(name: str) -> bool:
+    value = (os.getenv(name) or "").strip()
+    if not value:
+        return False
+    lowered = value.lower()
+    if lowered.startswith("your_") or lowered in {"placeholder", "changeme", "test", "demo"}:
+        return False
+    return True
+
+
 def llm_status():
-    return {"Gemini configured": bool(os.getenv("GEMINI_API_KEY")),
-            "Groq configured": bool(os.getenv("GROQ_API_KEY")),
+    return {"Gemini configured": _has_real_api_key("GEMINI_API_KEY"),
+            "Groq configured": _has_real_api_key("GROQ_API_KEY"),
             "Primary provider": "Gemini", "Fallback provider": "Groq"}
 
 
@@ -77,7 +87,7 @@ def _fallback_agri_response(prompt: str):
 
 def generate_text(prompt: str, system_instruction: str = "You are an expert agricultural data engineer."):
     errors = []
-    if os.getenv("GEMINI_API_KEY"):
+    if _has_real_api_key("GEMINI_API_KEY"):
         try:
             from google import genai
             client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -88,7 +98,7 @@ def generate_text(prompt: str, system_instruction: str = "You are an expert agri
             raise RuntimeError("Gemini returned an empty response")
         except Exception as exc:
             errors.append(f"Gemini: {exc}")
-    if os.getenv("GROQ_API_KEY"):
+    if _has_real_api_key("GROQ_API_KEY"):
         try:
             from openai import OpenAI
             client = OpenAI(api_key=os.getenv("GROQ_API_KEY"),
